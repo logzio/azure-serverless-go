@@ -1,0 +1,42 @@
+[ { "records":
+[
+  {
+    "resourceId": "MYRESOURCEID",
+    "operationVersion": "1.0.0",
+    "identity": "{\"email\":\"111-aaaaa-bbbb-cccc-dddd-eeeeeeeee\",\"subjectName\":null}",
+    "operationName": "Microsoft.Databricks/accounts/tokenLogin",
+    "category": "accounts",
+    "properties": {
+      "sourceIPAddress": "00.11.00.11:0",
+      "logId": "222-aaaaa-bbbb-cccc-dddd-eeeeeeeee",
+      "serviceName": "accounts",
+      "userAgent": "Apache-HttpClient (Java/1.8.0_282)",
+      "response": "{\"statusCode\":200}",
+      "actionName": "tokenLogin",
+      "requestId": "333-aaaaa-bbbb-cccc-dddd-eeeeeeeee",
+      "requestParams": "{\"user\":\"444-aaaaa-bbbb-cccc-dddd-eeeeeeeee\",\"tokenId\":\"555-aaaaa-bbbb-cccc-dddd-eeeeeeeee\"}"
+    },
+    "FluentdIngestTimestamp": "2021-05-12T22:24:53Z",
+    "Host": "00000000000"
+  },
+  {
+    "resourceId": "MYRESOURCEID",
+    "operationVersion": "1.0.0",
+    "identity": "{\"email\":\"111222-aaaaa-bbbb-cccc-dddd-eeeeeeeee\",\"subjectName\":null}",
+    "operationName": "Microsoft.Databricks/accounts/tokenLogin",
+    "category": "accounts",
+    "properties": {
+      "sourceIPAddress": "00.11.00.11:0",
+      "logId": "222222-aaaaa-bbbb-cccc-dddd-eeeeeeeee",
+      "serviceName": "accounts",
+      "userAgent": "Apache-HttpClient (Java/1.8.0_282)",
+      "response": "{\"statusCode\":200}",
+      "actionName": "tokenLogin",
+      "requestId": "333222-aaaaa-bbbb-cccc-dddd-eeeeeeeee",
+      "requestParams": "{\"user\":\"444222-aaaaa-bbbb-cccc-dddd-eeeeeeeee\",\"tokenId\":\"555222-aaaaa-bbbb-cccc-dddd-eeeeeeeee\"}"
+    },
+    "FluentdIngestTimestamp": "2021-05-12T22:24:53Z",
+    "Host": "11111111111"
+  }
+]
+} ]
