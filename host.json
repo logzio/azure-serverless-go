@@ -18,7 +18,7 @@
   ],
   "customHandler": {
     "description": {
-      "defaultExecutablePath": "logs-function/handler",
+      "defaultExecutablePath": "logs-function/handler.exe",
       "workingDirectory": "",
       "arguments": []
     },
