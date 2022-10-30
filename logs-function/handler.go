@@ -224,7 +224,7 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, decodeErr.Error(), http.StatusBadRequest)
 		return
 	}
-	if os.Getenv("Debug") == "true" {
+	if logzioHandler.config.debug == "true" {
 		log.Printf("debug: request data: %s", invokeReq.Data["records"])
 	}
 	var records []interface{}
