@@ -2,16 +2,13 @@ module github.com/logzio/logzio-azure-serverless/golang
 
 go 1.19
 
-require github.com/logzio/logzio-go v1.0.6
+require github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.5.1
 
 require (
-	github.com/beeker1121/goque v2.1.0+incompatible // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
-	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
-	github.com/shirou/gopsutil/v3 v3.22.9 // indirect
-	github.com/syndtr/goleveldb v1.0.0 // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.4 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.1 // indirect
+	github.com/stretchr/testify v1.8.0 // indirect
+	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
 	golang.org/x/sys v0.1.0 // indirect
+	golang.org/x/text v0.3.7 // indirect
 )
