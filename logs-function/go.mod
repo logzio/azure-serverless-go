@@ -2,7 +2,11 @@ module github.com/logzio/logzio-azure-serverless/golang
 
 go 1.19
 
-require github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.5.1
+require (
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.5.1
+	github.com/mattias-fjellstrom/go-custom-handler-logging v0.0.0-20210216083430-d2e55939f659
+	github.com/sirupsen/logrus v1.7.0
+)
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.4 // indirect
