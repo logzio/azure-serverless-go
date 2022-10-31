@@ -151,7 +151,7 @@
     },
     {
       "type": "Microsoft.Web/sites",
-      "kind": "functionapp,linux",
+      "kind": "functionapp",
       "name": "[variables('logsFunctionAppName')]",
       "apiVersion": "2020-06-01",
       "location": "[resourceGroup().location]",
@@ -159,7 +159,7 @@
       "properties": {
         "enabled": true,
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('FunctionServerfarms'))]",
-        "reserved": false,
+        "reserved": true,
         "httpsOnly": true,
         "siteConfig": {
           "appSettings": [{
