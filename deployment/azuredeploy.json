@@ -14,7 +14,7 @@
       "type": "bool"
     },
     "EventhubNamespace": {
-      "defaultValue": "[concat('LogzioLNS', uniqueString(resourceGroup().id))]",
+      "defaultValue": "[concat('LogzioNamespace', uniqueString(resourceGroup().id))]",
       "type": "string"
     },
     "EventhubLogsName": {
@@ -22,23 +22,23 @@
       "type": "string"
     },
     "ConsumergroupsLogsName": {
-      "defaultValue":"LogzioLConsumerGroup",
+      "defaultValue":"LogzioConsumerGroup",
       "type": "string"
     },
     "FunctionServerfarms": {
-      "defaultValue": "[concat('logzioLAppServicePlan', uniqueString(resourceGroup().id))]",
+      "defaultValue": "[concat('logzioAppServicePlan', uniqueString(resourceGroup().id))]",
       "type": "string"
     },
     "LogzioAppStorageAccounts": {
-      "defaultValue":"[concat('logzllog', uniqueString(resourceGroup().id))]",
+      "defaultValue":"[concat('logzioAppStorage', uniqueString(resourceGroup().id))]",
       "type": "string"
     },
     "AuthorizationRulesSharedAccessKey": {
-      "defaultValue":"LogzioLSharedAccessKey",
+      "defaultValue":"LogzioSharedAccessKey",
       "type": "string"
     },
     "AppInsightsName": {
-      "defaultValue":"[concat('logzioLInsight', uniqueString(resourceGroup().id))]",
+      "defaultValue":"[concat('logzioInsight', uniqueString(resourceGroup().id))]",
       "type": "string"
     },
     "functionsWorkerProcessCount": {
@@ -49,8 +49,8 @@
     }
   },
   "variables": {
-    "logsFunctionAppName": "[concat('logzioLFunctionApp', uniqueString(resourceGroup().id))]",
-    "backupStorageAccounts": "[concat('logslbackup', uniqueString(resourceGroup().id))]",
+    "logsFunctionAppName": "[concat('logzioFunctionApp', uniqueString(resourceGroup().id))]",
+    "backupStorageAccounts": "[concat('logsBackup', uniqueString(resourceGroup().id))]",
     "repoURL": "https://github.com/logzio/azure-serverless-go.git",
     "branch": "development"
   },
