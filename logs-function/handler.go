@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -37,11 +36,9 @@ type handlerConfig struct {
 }
 
 type logzioHandler struct {
-	config        handlerConfig
-	httpClient    *http.Client
-	httpTransport *http.Transport
-	dataBuffer    bytes.Buffer
-	logger        *log.Logger
+	config     handlerConfig
+	httpClient *http.Client
+	dataBuffer bytes.Buffer
 }
 
 // initAndValidateConfig populates the handlerConfig values from environment variables
@@ -90,7 +87,7 @@ func (l *logzioHandler) export() {
 	toBackOff := false
 	for attempt := 0; attempt < sendRetries; attempt++ {
 		if toBackOff {
-			l.logger.Printf("Failed to send logs, trying again in %v\n", backOff)
+			fmt.Printf("Failed to send logs, trying again in %v\n", backOff)
 			time.Sleep(backOff)
 			backOff *= 2
 		}
@@ -103,8 +100,8 @@ func (l *logzioHandler) export() {
 	}
 	// Send data to back up storage in case of shipping error that cannot be resolved
 	if statusCode != 200 {
-		l.logger.Printf("Error sending logs, status code is: %d", statusCode)
-		l.logger.Printf("Sending logs to backup storage")
+		fmt.Printf("Error sending logs, status code is: %d", statusCode)
+		fmt.Printf("Sending logs to backup storage")
 		l.sendToBackupContainer()
 	}
 	// reset data buffers
@@ -116,21 +113,20 @@ func (l *logzioHandler) makeHttpRequest(data bytes.Buffer) int {
 	url := fmt.Sprintf("%s/?token=%s&type=eventhub", l.config.url, l.config.token)
 	req, err := http.NewRequest("POST", url, &data)
 	req.Header.Add("Content-Encoding", "gzip")
-	l.logger.Print("Sending bulk of %v bytes\n", l.dataBuffer.Len())
+	fmt.Printf("Sending bulk of %v bytes\n", l.dataBuffer.Len())
 	resp, err := l.httpClient.Do(req)
 	if err != nil {
-		l.logger.Fatal("Error sending logs to %s %s\n", url, err)
+		fmt.Printf("Error sending logs to %s %s\n", url, err)
 		return 400
 	}
 	defer resp.Body.Close()
 	statusCode := resp.StatusCode
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		l.logger.Fatal("Error reading response body: %v", err)
+		fmt.Printf("Error reading response body: %v", err)
 	}
-	l.logger.Print("Response status code: %v \n", statusCode)
+	fmt.Printf("Response status code: %v \n", statusCode)
 	return statusCode
-
 }
 
 // shouldRetry is responsible to decide weather to retry a http request based on the response status coed
@@ -138,16 +134,16 @@ func (l *logzioHandler) shouldRetry(statusCode int) bool {
 	retry := true
 	switch statusCode {
 	case http.StatusBadRequest:
-		l.logger.Print("Got HTTP %d bad request, skip retry\n", statusCode)
+		fmt.Printf("Got HTTP %d bad request, skip retry\n", statusCode)
 		retry = false
 	case http.StatusNotFound:
-		l.logger.Print("Got HTTP %d not found, skip retry\n", statusCode)
+		fmt.Printf("Got HTTP %d not found, skip retry\n", statusCode)
 		retry = false
 	case http.StatusUnauthorized:
-		l.logger.Print("Got HTTP %d unauthorized, skip retry\n", statusCode)
+		fmt.Printf("Got HTTP %d unauthorized, skip retry\n", statusCode)
 		retry = false
 	case http.StatusForbidden:
-		l.logger.Print("Got HTTP %d forbidden, skip retry\n", statusCode)
+		fmt.Printf("Got HTTP %d forbidden, skip retry\n", statusCode)
 		retry = false
 	case http.StatusOK:
 		retry = false
@@ -160,13 +156,13 @@ func (l *logzioHandler) sendToBackupContainer() {
 	ctx := context.Background()
 	serviceClient, err := azblob.NewClientFromConnectionString(l.config.storageConnection, nil)
 	if err != nil {
-		l.logger.Fatal("Invalid credentials with error: " + err.Error())
+		fmt.Printf("Invalid credentials with error: " + err.Error())
 	}
 	containerName := fmt.Sprintf("logsbackup")
 	blobName := "logsbackup" + "-" + randomString()
 	_, err = serviceClient.UploadBuffer(ctx, containerName, blobName, l.dataBuffer.Bytes(), nil)
 	if err != nil {
-		l.logger.Fatal(err)
+		fmt.Print(err)
 		return
 	}
 
@@ -176,11 +172,11 @@ func (l *logzioHandler) sendToBackupContainer() {
 func (l *logzioHandler) writeRecordToBuffer(record interface{}) {
 	recordBytes, marshalErr := json.Marshal(record)
 	if marshalErr != nil {
-		l.logger.Fatal("Error getting record bytes: %s", marshalErr.Error())
+		fmt.Printf("Error getting record bytes: %s", marshalErr.Error())
 	}
 	_, bufferErr := l.dataBuffer.Write(append(recordBytes, '\n'))
 	if bufferErr != nil {
-		l.logger.Fatal("Error writing record bytes to buffer: %s", bufferErr.Error())
+		fmt.Printf("Error writing record bytes to buffer: %s", bufferErr.Error())
 	}
 }
 
@@ -200,24 +196,15 @@ func (l *logzioHandler) extractLogs(records []interface{}) {
 
 // eventHubTrigger Takes eventhub messages converts to log records that are export to logz.io
 func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
-	tlsConfig := &tls.Config{}
-	transport := &http.Transport{
-		Proxy:           http.ProxyFromEnvironment,
-		TLSClientConfig: tlsConfig,
-	}
 	// in case server side is sleeping - wait 10s instead of waiting for him to wake up
 	client := &http.Client{
-		Transport: transport,
-		Timeout:   time.Second * 10,
+		Timeout: time.Second * 10,
 	}
 	// Initialize handler
 	logzioHandler := logzioHandler{
-		httpClient:    client,
-		httpTransport: transport,
-		dataBuffer:    bytes.Buffer{},
-		logger:        log.Default(),
+		httpClient: client,
+		dataBuffer: bytes.Buffer{},
 	}
-	logzioHandler.logger.SetOutput(os.Stdout)
 	logzioHandler.initAndValidateConfig(w)
 	// Parsing the request
 	var invokeReq InvokeRequest
@@ -248,11 +235,11 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 func main() {
 	httpInvokerPort, exists := os.LookupEnv("FUNCTIONS_HTTPWORKER_PORT")
 	if exists {
-		fmt.Println("FUNCTIONS_HTTPWORKER_PORT: " + httpInvokerPort)
+		fmt.Printf("FUNCTIONS_HTTPWORKER_PORT: " + httpInvokerPort)
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/logs-function", eventHubTrigger)
-	fmt.Println("Go server Listening on httpInvokerPort:", httpInvokerPort)
+	fmt.Printf("Go server Listening on httpInvokerPort: %v", httpInvokerPort)
 	log.Fatal(http.ListenAndServe(":"+httpInvokerPort, mux))
 }
 
