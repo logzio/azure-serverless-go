@@ -217,6 +217,7 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 		dataBuffer:    bytes.Buffer{},
 		logger:        log.Default(),
 	}
+	logzioHandler.logger.SetOutput(os.Stdout)
 	logzioHandler.initAndValidateConfig(w)
 	// Parsing the request
 	var invokeReq InvokeRequest
