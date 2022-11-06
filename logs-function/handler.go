@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"golang.org/x/exp/slices"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -49,13 +51,23 @@ func (l *logzioHandler) initAndValidateConfig(w http.ResponseWriter) {
 	}
 	token, found := os.LookupEnv("LogzioToken")
 	if found {
-		l.config.token = token
+		match, _ := regexp.MatchString("\\b[a-zA-Z]{32}\\b", token)
+		if match {
+			l.config.token = token
+		} else {
+			http.Error(w, "Logzio token is not valid", http.StatusBadRequest)
+		}
 	} else {
 		http.Error(w, "Logzio token must be provided", http.StatusBadRequest)
 	}
 	url, found := os.LookupEnv("LogzioListener")
 	if found {
-		l.config.url = url
+		validListenerAddresses := []string{"https://listener.logz.io:8071", "https://listener.logz.io:8071-au", "https://listener-wa.logz.io:8071", "https://listener-nl.logz.io:8071", "https://listener-ca.logz.io:8071", "https://listener-eu.logz.io:8071", "https://listener-uk.logz.io:8071"}
+		if slices.Contains(validListenerAddresses, url) {
+			l.config.url = url
+		} else {
+			http.Error(w, "Logzio listener url is not valid", http.StatusBadRequest)
+		}
 	} else {
 		http.Error(w, "Logzio listener url must be provided", http.StatusBadRequest)
 	}
