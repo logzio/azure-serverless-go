@@ -86,11 +86,22 @@ func (l *logzioHandler) export() {
 	var compressedBuf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&compressedBuf)
 	_, err := gzipWriter.Write(l.dataBuffer.Bytes())
+	// listener limitation 10mb
+	if compressedBuf.Len() > 10000000 {
+		fmt.Println("Buffer size is larger than 10 mb, cancelling export")
+		l.dataBuffer.Reset()
+		compressedBuf.Reset()
+		return
+	}
 	if err != nil {
+		l.dataBuffer.Reset()
+		compressedBuf.Reset()
 		return
 	}
 	err = gzipWriter.Close()
 	if err != nil {
+		l.dataBuffer.Reset()
+		compressedBuf.Reset()
 		return
 	}
 	// retry logic
