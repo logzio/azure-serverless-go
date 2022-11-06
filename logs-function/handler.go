@@ -140,7 +140,7 @@ func (l *logzioHandler) shouldRetry(statusCode int) bool {
 		fmt.Printf("Got HTTP %d not found, skip retry\n", statusCode)
 		retry = false
 	case http.StatusUnauthorized:
-		fmt.Printf("Got HTTP %d unauthorized, skip retry\n", statusCode)
+		fmt.Printf("Got HTTP %d unauthorized, check your logzio shipping token\n", statusCode)
 		retry = false
 	case http.StatusForbidden:
 		fmt.Printf("Got HTTP %d forbidden, skip retry\n", statusCode)
@@ -226,7 +226,7 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 
 	outputs := make(map[string]interface{})
 	outputs["statusCode"] = 200
-	invokeResponse := InvokeResponse{outputs, nil, "Finished sending metrics successfully"}
+	invokeResponse := InvokeResponse{outputs, nil, "Finished sending logs successfully"}
 	responseJson, _ := json.Marshal(invokeResponse)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseJson)
