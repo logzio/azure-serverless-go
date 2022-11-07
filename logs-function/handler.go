@@ -62,7 +62,7 @@ func (l *logzioHandler) initAndValidateConfig(w http.ResponseWriter) {
 	}
 	url, found := os.LookupEnv("LogzioListener")
 	if found {
-		validListenerAddresses := []string{"https://listener.logz.io:8071", "https://listener.logz.io:8071-au", "https://listener-wa.logz.io:8071", "https://listener-nl.logz.io:8071", "https://listener-ca.logz.io:8071", "https://listener-eu.logz.io:8071", "https://listener-uk.logz.io:8071"}
+		validListenerAddresses := []string{"https://listener.logz.io:8071", "https://listener-au.logz.io:8071", "https://listener-wa.logz.io:8071", "https://listener-nl.logz.io:8071", "https://listener-ca.logz.io:8071", "https://listener-eu.logz.io:8071", "https://listener-uk.logz.io:8071"}
 		if slices.Contains(validListenerAddresses, url) {
 			l.config.url = url
 		} else {
