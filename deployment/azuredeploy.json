@@ -30,7 +30,7 @@
       "type": "string"
     },
     "LogzioAppStorageAccounts": {
-      "defaultValue":"[concat('logzioAppStorage', uniqueString(resourceGroup().id))]",
+      "defaultValue":"[concat('appstorage', uniqueString(resourceGroup().id))]",
       "type": "string"
     },
     "AuthorizationRulesSharedAccessKey": {
@@ -49,8 +49,8 @@
     }
   },
   "variables": {
-    "logsFunctionAppName": "[concat('logzioFunctionApp', uniqueString(resourceGroup().id))]",
-    "backupStorageAccounts": "[concat('logsBackup', uniqueString(resourceGroup().id))]",
+    "logsFunctionAppName": "[concat('logziofunctionapp', uniqueString(resourceGroup().id))]",
+    "backupStorageAccounts": "[concat('logsbackup', uniqueString(resourceGroup().id))]",
     "repoURL": "https://github.com/logzio/azure-serverless-go.git",
     "branch": "development"
   },
@@ -132,7 +132,7 @@
         "family": "Y",
         "capacity": 0
       },
-      "kind": "serverfarm",
+      "kind": "linux",
       "name": "[parameters('FunctionServerfarms')]",
       "apiVersion": "2020-06-01",
       "location": "[resourceGroup().location]",
@@ -151,7 +151,7 @@
     },
     {
       "type": "Microsoft.Web/sites",
-      "kind": "functionapp",
+      "kind": "functionapp,linux",
       "name": "[variables('logsFunctionAppName')]",
       "apiVersion": "2020-06-01",
       "location": "[resourceGroup().location]",
