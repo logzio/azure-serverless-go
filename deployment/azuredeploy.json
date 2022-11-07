@@ -4,7 +4,16 @@
   "parameters": {
     "LogzioListener": {
       "defaultValue": "https://listener.logz.io:8071",
-      "type": "String"
+      "type": "String",
+      "allowedValues": [
+        "https://listener.logz.io:8071",
+        "https://listener-eu.logz.io:8071",
+        "https://listener-au.logz.io:8071",
+        "https://listener-nl.logz.io:8071",
+        "https://listener-wa.logz.io:8071",
+        "https://listener-ca.logz.io:8071",
+        "https://listener-uk.logz.io:8071"
+      ]
     },
     "LogsShippingToken": {
       "type": "String"
@@ -132,7 +141,6 @@
         "family": "Y",
         "capacity": 0
       },
-      "kind": "linux",
       "name": "[parameters('FunctionServerfarms')]",
       "apiVersion": "2020-06-01",
       "location": "[resourceGroup().location]",
@@ -164,7 +172,7 @@
         "siteConfig": {
           "appSettings": [{
             "name": "FUNCTIONS_EXTENSION_VERSION",
-            "value": "~3"
+            "value": "~4"
           },
             {
               "name": "FUNCTIONS_WORKER_RUNTIME",
