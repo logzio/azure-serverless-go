@@ -58,8 +58,6 @@ Under 'Event hub policy name' choose `LogzioSharedAccessKey` for logs.
 This settings may take time to be applied and some services may need to be restarted.  
 For more information see [Stream Azure monitoring data to an event hub for consumption by an external tool](https://docs.microsoft.com/en-us/azure/monitoring-and-diagnostics/monitor-stream-monitoring-data-event-hubs) from Microsoft.
 
-![Diagnostic-settings](img/diagnostic-settings.png)
-
 ### 4. Check Logz.io for your data
 
 Give your data some time to get from your system to ours, and then open Logz.io.
