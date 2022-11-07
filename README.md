@@ -5,11 +5,22 @@ At the end of this process, your Azure function will forward logs or metrics fro
 
 ## Setting log shipping from Azure
 
-### 1. Deploy the Logz.io template👇
+### Deploy the Logz.io template👇
+#### Template uri
 
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Flogzio%2Fazure-serverless-go%2Fdevelopment%2Fdeployment%2Fazuredeploy.json)
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Flogzio%2Flogzio-azure-serverless%2Fmaster%2Fdeployments%2Fazuredeploylogs.json)
-
+#### Azure cli
+```shell
+# Create resource group for all resources
+az group create --name logzio-logs --location "East US"
+# Deploy template
+az deployment group create \
+  --name logzio-logs \
+  --resource-group logzio-logs \
+  --template-uri "https://raw.githubusercontent.com/logzio/azure-serverless-go/development/deployment/azuredeploy.json" \
+  --parameters LogsShippingToken=<<LogsShippingToken>> LogzioListener=<<LogzioListener>>
+```
 This deployment will create the following services:
 * Serverless Function App
 * Event Hubs Namespace
