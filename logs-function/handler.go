@@ -40,6 +40,7 @@ type handlerConfig struct {
 type logzioHandler struct {
 	config     handlerConfig
 	httpClient *http.Client
+	logs       []string
 	dataBuffer bytes.Buffer
 }
 
@@ -136,19 +137,19 @@ func (l *logzioHandler) makeHttpRequest(data bytes.Buffer) int {
 	url := fmt.Sprintf("%s/?token=%s&type=eventhub", l.config.url, l.config.token)
 	req, err := http.NewRequest("POST", url, &data)
 	req.Header.Add("Content-Encoding", "gzip")
-	fmt.Printf("Sending bulk of %v bytes\n", l.dataBuffer.Len())
+	l.logs = append(l.logs, fmt.Sprintf("Sending bulk of %v bytes\n", l.dataBuffer.Len()))
 	resp, err := l.httpClient.Do(req)
 	if err != nil {
-		fmt.Printf("Error sending logs to %s %s\n", url, err)
+		l.logs = append(l.logs, fmt.Sprintf("Error sending logs to %s %s\n", url, err))
 		return 400
 	}
 	defer resp.Body.Close()
 	statusCode := resp.StatusCode
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("Error reading response body: %v", err)
+		l.logs = append(l.logs, fmt.Sprintf("Error reading response body: %v", err))
 	}
-	fmt.Printf("Response status code: %v \n", statusCode)
+	l.logs = append(l.logs, fmt.Sprintf("Response status code: %v \n", statusCode))
 	return statusCode
 }
 
@@ -157,16 +158,16 @@ func (l *logzioHandler) shouldRetry(statusCode int) bool {
 	retry := true
 	switch statusCode {
 	case http.StatusBadRequest:
-		fmt.Printf("Got HTTP %d bad request, skip retry\n", statusCode)
+		l.logs = append(l.logs, fmt.Sprintf("Got HTTP %d bad request, skip retry\n", statusCode))
 		retry = false
 	case http.StatusNotFound:
-		fmt.Printf("Got HTTP %d not found, skip retry\n", statusCode)
+		l.logs = append(l.logs, fmt.Sprintf("Got HTTP %d not found, skip retry\n", statusCode))
 		retry = false
 	case http.StatusUnauthorized:
-		fmt.Printf("Got HTTP %d unauthorized, check your logzio shipping token\n", statusCode)
+		l.logs = append(l.logs, fmt.Sprintf("Got HTTP %d unauthorized, check your logzio shipping token\n", statusCode))
 		retry = false
 	case http.StatusForbidden:
-		fmt.Printf("Got HTTP %d forbidden, skip retry\n", statusCode)
+		l.logs = append(l.logs, fmt.Sprintf("Got HTTP %d forbidden, skip retry\n", statusCode))
 		retry = false
 	case http.StatusOK:
 		retry = false
@@ -179,7 +180,7 @@ func (l *logzioHandler) sendToBackupContainer() {
 	ctx := context.Background()
 	serviceClient, err := azblob.NewClientFromConnectionString(l.config.storageConnection, nil)
 	if err != nil {
-		fmt.Printf("Invalid credentials with error: " + err.Error())
+		l.logs = append(l.logs, fmt.Sprintf("Invalid credentials with error: "+err.Error()))
 	}
 	containerName := fmt.Sprintf("logsbackup")
 	blobName := "logsbackup" + "-" + randomString()
@@ -195,11 +196,11 @@ func (l *logzioHandler) sendToBackupContainer() {
 func (l *logzioHandler) writeRecordToBuffer(record interface{}) {
 	recordBytes, marshalErr := json.Marshal(record)
 	if marshalErr != nil {
-		fmt.Printf("Error getting record bytes: %s", marshalErr.Error())
+		l.logs = append(l.logs, fmt.Sprintf("Error getting record bytes: %s", marshalErr.Error()))
 	}
 	_, bufferErr := l.dataBuffer.Write(append(recordBytes, '\n'))
 	if bufferErr != nil {
-		fmt.Printf("Error writing record bytes to buffer: %s", bufferErr.Error())
+		l.logs = append(l.logs, fmt.Sprintf("Error writing record bytes to buffer: %s", bufferErr.Error()))
 	}
 }
 
@@ -227,6 +228,7 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 	logzioHandler := logzioHandler{
 		httpClient: client,
 		dataBuffer: bytes.Buffer{},
+		logs:       []string{},
 	}
 	logzioHandler.initAndValidateConfig(w)
 	// Parsing the request
@@ -238,7 +240,7 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if logzioHandler.config.debug == "true" {
-		fmt.Printf("debug: request data: %s", invokeReq.Data["records"])
+		logzioHandler.logs = append(logzioHandler.logs, fmt.Sprintf("debug: request data: %s", invokeReq.Data["records"]))
 	}
 	var records []interface{}
 	if unmarshalErr := json.Unmarshal([]byte(invokeReq.Data["records"].(string)), &records); unmarshalErr != nil {
@@ -249,7 +251,7 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 
 	outputs := make(map[string]interface{})
 	outputs["statusCode"] = 200
-	invokeResponse := InvokeResponse{outputs, nil, "Finished sending logs successfully"}
+	invokeResponse := InvokeResponse{outputs, logzioHandler.logs, "Finished sending logs successfully"}
 	responseJson, _ := json.Marshal(invokeResponse)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseJson)
@@ -262,7 +264,6 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/logs-function", eventHubTrigger)
-	fmt.Printf("Go server Listening on httpInvokerPort: %v", httpInvokerPort)
 	log.Fatal(http.ListenAndServe(":"+httpInvokerPort, mux))
 }
 
