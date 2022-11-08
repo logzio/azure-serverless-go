@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const maxBulkSize = 10000000
+
 // InvokeRequest event hub trigger payload
 type InvokeRequest struct {
 	Data     map[string]interface{}
@@ -88,8 +90,8 @@ func (l *logzioHandler) export() {
 	gzipWriter := gzip.NewWriter(&compressedBuf)
 	_, err := gzipWriter.Write(l.dataBuffer.Bytes())
 	// listener limitation 10mb
-	if compressedBuf.Len() > 10000000 {
-		fmt.Println("Buffer size is larger than 10 mb, cancelling export")
+	if compressedBuf.Len() > maxBulkSize {
+		l.logs = append(l.logs, fmt.Sprintf("Bulk size is larger than %d bytes, cancelling export", maxBulkSize))
 		l.dataBuffer.Reset()
 		compressedBuf.Reset()
 		return
