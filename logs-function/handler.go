@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"golang.org/x/exp/slices"
@@ -83,29 +84,29 @@ func (l *logzioHandler) initAndValidateConfig(w http.ResponseWriter) {
 }
 
 // export sends the data buffer bytes to logz.io
-func (l *logzioHandler) export() {
+func (l *logzioHandler) export() int {
 	var statusCode int
 	// gzip compress data before shipping
 	var compressedBuf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&compressedBuf)
 	_, err := gzipWriter.Write(l.dataBuffer.Bytes())
+	if err != nil {
+		l.dataBuffer.Reset()
+		compressedBuf.Reset()
+		return http.StatusInternalServerError
+	}
 	// listener limitation 10mb
 	if compressedBuf.Len() > maxBulkSize {
 		l.logs = append(l.logs, fmt.Sprintf("Bulk size is larger than %d bytes, cancelling export", maxBulkSize))
 		l.dataBuffer.Reset()
 		compressedBuf.Reset()
-		return
-	}
-	if err != nil {
-		l.dataBuffer.Reset()
-		compressedBuf.Reset()
-		return
+		return http.StatusRequestEntityTooLarge
 	}
 	err = gzipWriter.Close()
 	if err != nil {
 		l.dataBuffer.Reset()
 		compressedBuf.Reset()
-		return
+		return http.StatusInternalServerError
 	}
 	// retry logic
 	backOff := time.Second * 2
@@ -113,7 +114,7 @@ func (l *logzioHandler) export() {
 	toBackOff := false
 	for attempt := 0; attempt < sendRetries; attempt++ {
 		if toBackOff {
-			fmt.Printf("Failed to send logs, trying again in %v\n", backOff)
+			l.logs = append(l.logs, fmt.Sprintf("Failed to send logs, trying again in %v\n", backOff))
 			time.Sleep(backOff)
 			backOff *= 2
 		}
@@ -126,13 +127,14 @@ func (l *logzioHandler) export() {
 	}
 	// Send data to back up storage in case of shipping error that cannot be resolved
 	if statusCode != 200 {
-		fmt.Printf("Error sending logs, status code is: %d", statusCode)
-		fmt.Printf("Sending logs to backup storage")
+		l.logs = append(l.logs, fmt.Sprintf("Error sending logs, status code is: %d", statusCode))
+		l.logs = append(l.logs, "Sending logs to backup storage")
 		l.sendToBackupContainer()
 	}
 	// reset data buffers
 	l.dataBuffer.Reset()
 	compressedBuf.Reset()
+	return statusCode
 }
 
 func (l *logzioHandler) makeHttpRequest(data bytes.Buffer) int {
@@ -183,6 +185,7 @@ func (l *logzioHandler) sendToBackupContainer() {
 	serviceClient, err := azblob.NewClientFromConnectionString(l.config.storageConnection, nil)
 	if err != nil {
 		l.logs = append(l.logs, fmt.Sprintf("Invalid credentials with error: "+err.Error()))
+		return
 	}
 	containerName := fmt.Sprintf("logsbackup")
 	blobName := "logsbackup" + "-" + randomString()
@@ -247,16 +250,20 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 	var records []interface{}
 	if unmarshalErr := json.Unmarshal([]byte(invokeReq.Data["records"].(string)), &records); unmarshalErr != nil {
 		http.Error(w, unmarshalErr.Error(), http.StatusInternalServerError)
+		return
 	}
 	logzioHandler.extractLogs(records)
-	logzioHandler.export()
-
+	exportStatusCode := logzioHandler.export()
+	if exportStatusCode != 200 {
+		http.Error(w, errors.New("error while exporting logs to logz.io").Error(), exportStatusCode)
+	}
 	outputs := make(map[string]interface{})
 	outputs["statusCode"] = 200
 	invokeResponse := InvokeResponse{outputs, logzioHandler.logs, "Finished sending logs successfully"}
 	responseJson, _ := json.Marshal(invokeResponse)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseJson)
+
 }
 
 func main() {
