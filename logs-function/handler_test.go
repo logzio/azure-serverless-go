@@ -31,6 +31,56 @@ func TestShouldRetry(t *testing.T) {
 		assert.Equal(t, test.expected, sr)
 	}
 }
+func TestInitAndValidateConfig(t *testing.T) {
+	type InitAndValidateConfigTest struct {
+		token       string
+		url         string
+		connection  string
+		expectedErr bool
+	}
+	var InitAndValidateConfigTests = []InitAndValidateConfigTest{
+		{"fakeYdhCHUJPlBVYZSBncSMABogmtoken", "https://listener.logz.io:8071", "connection", false},
+		{"badformat", "https://listener.logz.io:8071", "connection", true},
+		{"fakeYdhCHUJPlBVYZSBncSMABogmtoken", "https://notvalid.logz.io:8071", "connection", true},
+		{"fakeYdhCHUJPlBVYZSBncSMABogmtoken", "https://listener.logz.io:8071", "", true},
+	}
+	logzioHandler := logzioHandler{}
+	for _, test := range InitAndValidateConfigTests {
+		err := os.Setenv("LogsStorageConnectionString", test.connection)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		err = os.Setenv("LogzioListener", test.url)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		err = os.Setenv("LogzioToken", test.token)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		if test.expectedErr {
+			cError := logzioHandler.initAndValidateConfig()
+			assert.Error(t, cError)
+		} else {
+			cError := logzioHandler.initAndValidateConfig()
+			assert.NoError(t, cError)
+		}
+	}
+	t.Cleanup(func() {
+		err := os.Unsetenv("LogsStorageConnectionString")
+		if err != nil {
+			panic(err)
+		}
+		err = os.Unsetenv("LogzioToken")
+		if err != nil {
+			panic(err)
+		}
+		err = os.Unsetenv("LogzioListener")
+		if err != nil {
+			panic(err)
+		}
+	})
+}
 
 func TestExport(t *testing.T) {
 	codes := []int{413, 400, 500, 200, 403, 404}
@@ -56,6 +106,55 @@ func TestExport(t *testing.T) {
 		ts.Close()
 	}
 }
+
+func TestWriteRecordToBuffer(t *testing.T) {
+	type WriteRecordToBufferTest struct {
+		input         interface{}
+		errorExpected bool
+	}
+	var WriteRecordToBufferTests = []WriteRecordToBufferTest{
+		{nil, false},
+		{[]byte{97, 98, 99, 100, 101, 102}, false},
+		{"string", false},
+		{make(chan int), true},
+	}
+	logzioHandler := logzioHandler{}
+	for _, test := range WriteRecordToBufferTests {
+		if test.errorExpected {
+			assert.Error(t, logzioHandler.writeRecordToBuffer(test.input))
+		} else {
+			assert.NoError(t, logzioHandler.writeRecordToBuffer(test.input))
+		}
+	}
+}
+
+//func TestEventhubTrigger(t *testing.T) {
+//	err := os.Setenv("LogzioToken", "fakeYdhCHUJPlBVYZSBncSMABogmtoken")
+//	if err != nil {
+//		t.Fatal(err.Error())
+//	}
+//	err = os.Setenv("LogzioListener", "https://listener.logz.io:8071")
+//	if err != nil {
+//		t.Fatal(err.Error())
+//	}
+//	err = os.Setenv("LogsStorageConnectionString", "connectionString")
+//	if err != nil {
+//		t.Fatal(err.Error())
+//	}
+//	jsonFile, err := os.Open("../testEvents/records.json")
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	byteValue, _ := ioutil.ReadAll(jsonFile)
+//	reader := bytes.NewReader(byteValue)
+//	body := io.NopCloser(reader)
+//	var request = http.Request{
+//		Body: body,
+//	}
+//	var w http.ResponseWriter
+//	eventHubTrigger(w, &request)
+//
+//}
 
 func TestExtractLogs(t *testing.T) {
 	l := logzioHandler{

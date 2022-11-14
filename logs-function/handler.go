@@ -48,21 +48,21 @@ type logzioHandler struct {
 }
 
 // initAndValidateConfig populates the handlerConfig values from environment variables
-func (l *logzioHandler) initAndValidateConfig(w http.ResponseWriter) {
+func (l *logzioHandler) initAndValidateConfig() error {
 	debug, found := os.LookupEnv("Debug")
 	if found {
 		l.config.debug = debug
 	}
 	token, found := os.LookupEnv("LogzioToken")
 	if found {
-		match, _ := regexp.MatchString("\\b[a-zA-Z]{32}\\b", token)
+		match, _ := regexp.MatchString("[a-zA-Z]{32}", token)
 		if match {
 			l.config.token = token
 		} else {
-			http.Error(w, "Logzio token is not valid", http.StatusBadRequest)
+			return errors.New("logzio token is not valid")
 		}
 	} else {
-		http.Error(w, "Logzio token must be provided", http.StatusBadRequest)
+		return errors.New("logzio token must be provided")
 	}
 	url, found := os.LookupEnv("LogzioListener")
 	if found {
@@ -70,17 +70,18 @@ func (l *logzioHandler) initAndValidateConfig(w http.ResponseWriter) {
 		if slices.Contains(validListenerAddresses, url) {
 			l.config.url = url
 		} else {
-			http.Error(w, "Logzio listener url is not valid", http.StatusBadRequest)
+			return errors.New("logzio listener url is not valid")
 		}
 	} else {
-		http.Error(w, "Logzio listener url must be provided", http.StatusBadRequest)
+		return errors.New("logzio listener url must be provided")
 	}
 	storageConnection, found := os.LookupEnv("LogsStorageConnectionString")
-	if found {
+	if found && storageConnection != "" {
 		l.config.storageConnection = storageConnection
 	} else {
-		http.Error(w, "Back up storage connection string must be provided", http.StatusBadRequest)
+		return errors.New("back up storage connection string must be provided")
 	}
+	return nil
 }
 
 // export sends the data buffer bytes to logz.io
@@ -145,7 +146,7 @@ func (l *logzioHandler) makeHttpRequest(data bytes.Buffer) int {
 	resp, err := l.httpClient.Do(req)
 	if err != nil {
 		l.logs = append(l.logs, fmt.Sprintf("Error sending logs to %s %s\n", url, err))
-		return 400
+		return resp.StatusCode
 	}
 	defer resp.Body.Close()
 	statusCode := resp.StatusCode
@@ -198,15 +199,16 @@ func (l *logzioHandler) sendToBackupContainer() {
 }
 
 // writeRecordToBuffer Takes a log record compression the data and writes it to the data buffer
-func (l *logzioHandler) writeRecordToBuffer(record interface{}) {
+func (l *logzioHandler) writeRecordToBuffer(record interface{}) error {
 	recordBytes, marshalErr := json.Marshal(record)
 	if marshalErr != nil {
-		l.logs = append(l.logs, fmt.Sprintf("Error getting record bytes: %s", marshalErr.Error()))
+		return errors.New(fmt.Sprintf("Error getting record bytes: %s", marshalErr.Error()))
 	}
 	_, bufferErr := l.dataBuffer.Write(append(recordBytes, '\n'))
 	if bufferErr != nil {
-		l.logs = append(l.logs, fmt.Sprintf("Error writing record bytes to buffer: %s", bufferErr.Error()))
+		return errors.New(fmt.Sprintf("Error writing record bytes to buffer: %s", bufferErr.Error()))
 	}
+	return nil
 }
 
 // extractLogs Takes record list from eventhub messages and converts to logs
@@ -215,11 +217,17 @@ func (l *logzioHandler) extractLogs(records []interface{}) {
 		innerRecords := record.(map[string]interface{})["records"]
 		if innerRecords != nil {
 			for _, innerRecord := range innerRecords.([]interface{}) {
-				l.writeRecordToBuffer(innerRecord)
+				writeError := l.writeRecordToBuffer(innerRecord)
+				if writeError != nil {
+					l.logs = append(l.logs, writeError.Error())
+				}
 			}
 			continue
 		}
-		l.writeRecordToBuffer(record)
+		writeError := l.writeRecordToBuffer(record)
+		if writeError != nil {
+			l.logs = append(l.logs, writeError.Error())
+		}
 	}
 }
 
@@ -235,11 +243,15 @@ func eventHubTrigger(w http.ResponseWriter, r *http.Request) {
 		dataBuffer: bytes.Buffer{},
 		logs:       []string{},
 	}
-	logzioHandler.initAndValidateConfig(w)
+	configError := logzioHandler.initAndValidateConfig()
+	if configError != nil {
+		http.Error(w, configError.Error(), http.StatusBadRequest)
+	}
 	// Parsing the request
 	var invokeReq InvokeRequest
 	d := json.NewDecoder(r.Body)
 	decodeErr := d.Decode(&invokeReq)
+
 	if decodeErr != nil {
 		http.Error(w, decodeErr.Error(), http.StatusBadRequest)
 		return
