@@ -1,0 +1,14 @@
+{
+  "disabled": false,
+  "bindings": [
+    {
+      "type": "eventHubTrigger",
+      "name": "records",
+      "direction": "in",
+      "eventHubName": "%EventhubLogsName%",
+      "consumerGroup": "%ConsumergroupsLogsName%",
+      "cardinality": "many",
+      "connection": "AzureEventHubLogsConnectionString"
+    }
+  ]
+}
